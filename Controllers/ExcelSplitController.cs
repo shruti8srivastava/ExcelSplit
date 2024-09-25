@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using DocumentFormat.OpenXml.EMMA;
+using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
+using System.IO.Compression;
 
 namespace ExcelSplit.Controllers
 {
@@ -25,6 +27,10 @@ namespace ExcelSplit.Controllers
             }
 
             // Process the Excel file
+
+            var outputDirectory = Path.Combine(Path.GetTempPath(), "SplitExcel");
+            Directory.CreateDirectory(outputDirectory);
+
             using (var file = new ExcelPackage(new FileInfo(filePath)))
             {
                 var workbook = file.Workbook; // Get the first worksheet
@@ -35,10 +41,6 @@ namespace ExcelSplit.Controllers
 
                 if (worksheetCount == 1)
                     return Content("File has single worksheet");
-
-
-                 var outputDirectory = Path.Combine(Path.GetTempPath(), "SplitExcel");
-                Directory.CreateDirectory(outputDirectory);
 
                 for (int i = 0; i < worksheetCount; i++)
                 {
@@ -58,7 +60,18 @@ namespace ExcelSplit.Controllers
 
             }
 
-            return Ok("File uploaded and processed successfully.");
+            var zipPath = Path.Combine(Path.GetTempPath(), "SplitWorkbooks.zip");
+            ZipFile.CreateFromDirectory(outputDirectory, zipPath);
+
+            // Return the ZIP file as a download
+            var zipFileStream = new FileStream(zipPath, FileMode.Open);
+            var zipFile = new FileStreamResult(zipFileStream, "application/zip")
+            {
+                FileDownloadName = "SplitWorkbooks.zip"
+            };
+
+            //return Ok("File uploaded and processed successfully.");
+            return zipFile;
         }
     }
 }
